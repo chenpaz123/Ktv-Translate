@@ -23,7 +23,6 @@ import customtkinter as ctk
 import pysrt
 from transformers import AutoTokenizer
 import ctranslate2
-from bidi.algorithm import get_display
 
 # Configure CustomTkinter appearance
 ctk.set_appearance_mode("Dark")  
@@ -258,17 +257,17 @@ app.eval('tk::PlaceWindow . center')
 title_lbl = ctk.CTkLabel(app, text="Ktv Translate", font=ctk.CTkFont(size=24, weight="bold"))
 title_lbl.pack(pady=(30, 5))
 
-desc_text = "תרגום כתוביות מואץ חומרה (CUDA)\nניתן לבחור מספר קבצים במקביל"
-desc_lbl = ctk.CTkLabel(app, text=get_display(desc_text), font=ctk.CTkFont(size=14), text_color="gray")
+desc_text = "\u202Bתרגום כתוביות מואץ חומרה (CUDA)\nניתן לבחור מספר קבצים במקביל\u202C"
+desc_lbl = ctk.CTkLabel(app, text=desc_text, font=ctk.CTkFont(size=14), text_color="gray")
 desc_lbl.pack(pady=(0, 20))
 
-btn_select = ctk.CTkButton(app, text=get_display("תרגום כתוביות בלבד (ללא סנכרון)"), font=ctk.CTkFont(size=16), height=40, width=350, command=select_files)
+btn_select = ctk.CTkButton(app, text="\u202Bתרגום כתוביות בלבד (ללא סנכרון)\u202C", font=ctk.CTkFont(size=16), height=40, width=350, command=select_files)
 btn_select.pack(pady=5)
 
-btn_sync_trans = ctk.CTkButton(app, text=get_display("סנכרון + תרגום אוטומטי (לכתוביות שהורדו)"), font=ctk.CTkFont(size=16), height=40, width=350, command=sync_and_translate_ui)
+btn_sync_trans = ctk.CTkButton(app, text="\u202Bסנכרון + תרגום אוטומטי (לכתוביות שהורדו)\u202C", font=ctk.CTkFont(size=16), height=40, width=350, command=sync_and_translate_ui)
 btn_sync_trans.pack(pady=5)
 
-btn_extract_mux = ctk.CTkButton(app, text=get_display("חילוץ ותרגום כתוביות מובנות מתוך וידאו"), font=ctk.CTkFont(size=16), height=40, width=350, fg_color="#2B7A0B", hover_color="#3E9F15", command=extract_translate_mux_ui)
+btn_extract_mux = ctk.CTkButton(app, text="\u202Bחילוץ ותרגום כתוביות מובנות מתוך וידאו\u202C", font=ctk.CTkFont(size=16), height=40, width=350, fg_color="#2B7A0B", hover_color="#3E9F15", command=extract_translate_mux_ui)
 btn_extract_mux.pack(pady=5)
 
 progress = ctk.CTkProgressBar(app, width=350)
