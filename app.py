@@ -257,17 +257,17 @@ app.eval('tk::PlaceWindow . center')
 title_lbl = ctk.CTkLabel(app, text="Ktv Translate", font=ctk.CTkFont(size=24, weight="bold"))
 title_lbl.pack(pady=(30, 5))
 
-desc_text = "\u202Bתרגום כתוביות מואץ חומרה (CUDA)\nניתן לבחור מספר קבצים במקביל\u202C"
+desc_text = "(CUDA) חומרה מואץ כתוביות תרגום\nבמקביל קבצים מספר לבחור ניתן"
 desc_lbl = ctk.CTkLabel(app, text=desc_text, font=ctk.CTkFont(size=14), text_color="gray")
 desc_lbl.pack(pady=(0, 20))
 
-btn_select = ctk.CTkButton(app, text="\u202Bתרגום כתוביות בלבד (ללא סנכרון)\u202C", font=ctk.CTkFont(size=16), height=40, width=350, command=select_files)
+btn_select = ctk.CTkButton(app, text="(ללא סנכרון) בלבד כתוביות תרגום", font=ctk.CTkFont(size=16), height=40, width=350, command=select_files)
 btn_select.pack(pady=5)
 
-btn_sync_trans = ctk.CTkButton(app, text="\u202Bסנכרון + תרגום אוטומטי (לכתוביות שהורדו)\u202C", font=ctk.CTkFont(size=16), height=40, width=350, command=sync_and_translate_ui)
+btn_sync_trans = ctk.CTkButton(app, text="(לכתוביות שהורדו) אוטומטי תרגום + סנכרון", font=ctk.CTkFont(size=16), height=40, width=350, command=sync_and_translate_ui)
 btn_sync_trans.pack(pady=5)
 
-btn_extract_mux = ctk.CTkButton(app, text="\u202Bחילוץ ותרגום כתוביות מובנות מתוך וידאו\u202C", font=ctk.CTkFont(size=16), height=40, width=350, fg_color="#2B7A0B", hover_color="#3E9F15", command=extract_translate_mux_ui)
+btn_extract_mux = ctk.CTkButton(app, text="וידאו מתוך מובנות כתוביות ותרגום חילוץ", font=ctk.CTkFont(size=16), height=40, width=350, fg_color="#2B7A0B", hover_color="#3E9F15", command=extract_translate_mux_ui)
 btn_extract_mux.pack(pady=5)
 
 progress = ctk.CTkProgressBar(app, width=350)
