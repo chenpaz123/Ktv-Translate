@@ -3,6 +3,7 @@
 Ktv Translate is a standalone, blazing-fast local application that translates English SRT subtitle files into Hebrew entirely on your own machine. It is specifically optimized to utilize NVIDIA GPUs (CUDA) via the highly efficient CTranslate2 inference engine, allowing you to translate entire seasons in seconds.
 
 ## Features
+- **Auto-Sync to Video**: Automatically detects speech in your video files using `FFsubsync` and perfectly aligns your out-of-sync English subtitles before translating them.
 - **100% Offline & Local**: No data is sent to the cloud. Your subtitles stay on your machine.
 - **Hardware Acceleration**: Automatically detects and uses your NVIDIA GPU (CUDA) for lightning-fast translation, bypassing PyTorch setup issues.
 - **Batch Processing**: Select multiple `.srt` files at once (e.g., an entire season) and it will translate them sequentially.
@@ -15,15 +16,26 @@ Ktv Translate is a standalone, blazing-fast local application that translates En
 2. Clone or download this repository.
 3. Double-click the `Install_Ktv_Translate.bat` script. This will automatically:
    - Create an isolated Python virtual environment (`venv`).
-   - Install all required dependencies (`ctranslate2`, `transformers`, `customtkinter`, `pysrt`, NVIDIA DLLs, etc.).
+   - Install all required dependencies (`ctranslate2`, `transformers`, `customtkinter`, `pysrt`, `ffsubsync`, NVIDIA DLLs, etc.).
 
 ## Usage
 
-1. Double-click `Run_Ktv_Translate.bat` to launch the application.
-2. Click **בחר קבצי SRT לתרגום** (Select SRT files for translation).
-3. Select one or more English `.srt` files.
-4. The translated files will be automatically saved in the same directory as the original files, with `_hebrew.srt` appended to the name.
+Double-click `Run_Ktv_Translate.bat` to launch the application. You have two options:
+
+### 1. Auto-Sync + Translate (Recommended)
+Use this if your downloaded subtitles are out of sync with your video file.
+1. Click **סנכרון + תרגום אוטומטי (מומלץ)**.
+2. Select your video file (MP4, MKV, etc.).
+3. Select the corresponding out-of-sync English `.srt` file.
+4. The app will listen to the video, automatically align the timestamps, and then translate it. The output will be saved as `[filename]_synced_hebrew.srt`.
+
+### 2. Translate Only
+Use this if your subtitles are already perfectly synchronized.
+1. Click **תרגום כתוביות בלבד (ללא סנכרון)**.
+2. Select one or more English `.srt` files.
+3. The translated files will be automatically saved as `[filename]_hebrew.srt`.
 
 ## Requirements
 - Python 3.8 or higher.
 - (Optional but Highly Recommended) An NVIDIA GPU for CUDA acceleration. If no compatible GPU is found, the application will fallback to CPU translation seamlessly.
+- **FFmpeg**: Required for the Auto-Sync feature to extract audio from videos. It usually comes pre-installed, but if auto-sync fails, ensure FFmpeg is installed and added to your system PATH.
