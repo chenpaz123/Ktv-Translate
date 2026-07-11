@@ -112,11 +112,11 @@ def _translate_single(file_path, status_label, progress_bar, file_idx, total_fil
     return output_path
 
 def extract_translate_mux_ui():
-    video_path = filedialog.askopenfilename(
-        title="Select Video File with Embedded Subtitles",
+    video_paths = filedialog.askopenfilenames(
+        title="Select Video Files with Embedded Subtitles",
         filetypes=(("Video Files", "*.mp4 *.mkv *.avi *.mov"), ("All Files", "*.*"))
     )
-    if not video_path: return
+    if not video_paths: return
     
     def run_pipeline():
         try:
@@ -124,56 +124,53 @@ def extract_translate_mux_ui():
             btn_sync_trans.configure(state="disabled")
             btn_extract_mux.configure(state="disabled")
             
-            status_lbl.configure(text="שלב 1/3: מחלץ כתוביות מובנות מהוידאו...")
-            progress.configure(mode="indeterminate")
-            progress.pack(pady=10)
-            progress.start()
-            
-            temp_srt = video_path.rsplit('.', 1)[0] + "_extracted.srt"
-            
-            process = subprocess.run(["ffmpeg", "-y", "-i", video_path, "-map", "0:s:0", temp_srt], 
-                                     capture_output=True, text=True, encoding='utf-8', errors='ignore')
-            
-            if process.returncode != 0 or not os.path.exists(temp_srt) or os.path.getsize(temp_srt) == 0:
-                progress.stop()
-                progress.pack_forget()
-                status_lbl.configure(text="לא נמצאו כתוביות מובנות בוידאו (או שגיאת חילוץ).")
-                btn_select.configure(state="normal")
-                btn_sync_trans.configure(state="normal")
-                btn_extract_mux.configure(state="normal")
-                return
-                
-            progress.stop()
-            progress.configure(mode="determinate")
-            
-            # Translate
+            # Load model
             if translator is None or tokenizer is None:
                 load_model(status_lbl, progress)
+                if translator is None:
+                    raise Exception("Model loading failed.")
+            
+            for file_idx, video_path in enumerate(video_paths):
+                status_lbl.configure(text=f"קובץ {file_idx+1}/{len(video_paths)} - שלב 1/3: מחלץ כתוביות...")
+                progress.configure(mode="indeterminate")
+                progress.pack(pady=10)
+                progress.start()
                 
-            hebrew_srt = _translate_single(temp_srt, status_lbl, progress, 0, 1)
-            
-            # Mux back to video
-            status_lbl.configure(text="שלב 3/3: אורז מחדש את הוידאו עם הכתוביות בעברית (ללא קידוד מחדש)...")
-            progress.configure(mode="indeterminate")
-            progress.start()
-            
-            output_video = video_path.rsplit('.', 1)[0] + "_hebrew.mkv"
-            mux_process = subprocess.run(["ffmpeg", "-y", "-i", video_path, "-i", hebrew_srt, 
-                                          "-map", "0:v", "-map", "0:a", "-map", "1:0", "-map", "0:s?", "-c", "copy", 
-                                          "-metadata:s:s:0", "language=heb", "-disposition:s:s:0", "default",
-                                          output_video], 
+                temp_srt = video_path.rsplit('.', 1)[0] + "_extracted.srt"
+                
+                process = subprocess.run(["ffmpeg", "-y", "-i", video_path, "-map", "0:s:0", temp_srt], 
                                          capture_output=True, text=True, encoding='utf-8', errors='ignore')
-                                         
-            progress.stop()
-            
-            if mux_process.returncode == 0:
-                status_lbl.configure(text=f"הושלם בהצלחה!\nנשמר סרטון חדש מוכן לצפייה:\n{os.path.basename(output_video)}")
+                
+                if process.returncode != 0 or not os.path.exists(temp_srt) or os.path.getsize(temp_srt) == 0:
+                    progress.stop()
+                    continue
+                    
+                progress.stop()
+                progress.configure(mode="determinate")
+                
+                # Translate
+                hebrew_srt = _translate_single(temp_srt, status_lbl, progress, file_idx, len(video_paths))
+                
+                # Mux back to video
+                status_lbl.configure(text=f"קובץ {file_idx+1}/{len(video_paths)} - שלב 3/3: אורז מחדש את הוידאו...")
+                progress.configure(mode="indeterminate")
+                progress.start()
+                
+                output_video = video_path.rsplit('.', 1)[0] + "_hebrew.mkv"
+                mux_process = subprocess.run(["ffmpeg", "-y", "-i", video_path, "-i", hebrew_srt, 
+                                              "-map", "0:v", "-map", "0:a", "-map", "1:0", "-map", "0:s?", "-c", "copy", 
+                                              "-metadata:s:0", "language=heb", "-disposition:s:0", "default",
+                                              output_video], 
+                                             capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                                             
+                progress.stop()
+                
                 try:
                     os.remove(temp_srt)
                     os.remove(hebrew_srt)
                 except: pass
-            else:
-                status_lbl.configure(text=f"שגיאה באריזת הוידאו:\n{mux_process.stderr[-200:]}")
+                
+            status_lbl.configure(text=f"הושלם בהצלחה!\nעובדו {len(video_paths)} סרטונים.")
                 
         except Exception as e:
             progress.stop()
