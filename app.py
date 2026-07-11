@@ -31,8 +31,8 @@ ctk.set_default_color_theme("blue")
 # Global model variables
 translator = None
 tokenizer = None
-model_name = "opus-mt-en-he-ct2" # Local converted model
-tokenizer_name = "Helsinki-NLP/opus-mt-en-he"
+model_name = "nllb-200-600M-ct2" # Local converted model
+tokenizer_name = "facebook/nllb-200-distilled-600M"
 
 def load_model(status_label, progress_bar):
     global translator, tokenizer
@@ -45,7 +45,7 @@ def load_model(status_label, progress_bar):
             # Check if CUDA is actually available in ctranslate2
             device = "cuda" if ctranslate2.get_supported_compute_types("cuda") else "cpu"
             
-            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, src_lang="eng_Latn")
             translator = ctranslate2.Translator(model_name, device=device)
             
             status_label.configure(text=f"המודל נטען בהצלחה! מאיץ מופעל: {device.upper()}")
@@ -87,8 +87,8 @@ def translate_files(file_paths, status_label, progress_bar, buttons):
                 
                 # Translate batch using ctranslate2
                 source_tokens = [tokenizer.convert_ids_to_tokens(tokenizer.encode(text)) for text in texts]
-                results = translator.translate_batch(source_tokens)
-                translated_texts = [tokenizer.decode(tokenizer.convert_tokens_to_ids(result.hypotheses[0]), skip_special_tokens=True) for result in results]
+                results = translator.translate_batch(source_tokens, target_prefix=[["heb_Hebr"]] * len(source_tokens))
+                translated_texts = [tokenizer.decode(tokenizer.convert_tokens_to_ids(result.hypotheses[0][1:]), skip_special_tokens=True) for result in results]
                 
                 # Put translated text back
                 for j, sub in enumerate(batch_subs):

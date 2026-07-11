@@ -24,6 +24,13 @@ pip install --upgrade pip
 pip install torch transformers pysrt customtkinter sentencepiece sacremoses ctranslate2 nvidia-cublas-cu12 nvidia-cudnn-cu12 ffsubsync
 
 echo.
-echo [3/3] Installation Complete!
+echo [3/4] Downloading Translation Model (NLLB 600M)...
+if not exist "nllb-200-600M-ct2" (
+    echo This might take a few minutes...
+    ct2-transformers-converter --model facebook/nllb-200-distilled-600M --output_dir nllb-200-600M-ct2 --quantization int8
+)
+
+echo.
+echo [4/4] Installation Complete!
 echo You can now run the app using Run_Ktv_Translate.bat
 pause
