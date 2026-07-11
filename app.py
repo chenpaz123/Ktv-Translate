@@ -1,5 +1,6 @@
 import os
 import sys
+import subprocess
 
 # Suppress HuggingFace Hub warnings and force offline mode (uses local cache)
 os.environ["HF_HUB_DISABLE"] = "1"
@@ -111,6 +112,53 @@ def translate_files(file_paths, status_label, progress_bar, translate_btn):
         progress_bar.pack_forget()
         translate_btn.configure(state="normal")
 
+def sync_subtitle_ui():
+    video_path = filedialog.askopenfilename(
+        title="Select Video File (MP4, MKV, etc)",
+        filetypes=(("Video Files", "*.mp4 *.mkv *.avi *.mov"), ("All Files", "*.*"))
+    )
+    if not video_path: return
+    
+    srt_path = filedialog.askopenfilename(
+        title="Select Subtitle File (SRT)",
+        filetypes=(("SRT Files", "*.srt"), ("All Files", "*.*"))
+    )
+    if not srt_path: return
+    
+    def run_sync():
+        try:
+            btn_select.configure(state="disabled")
+            btn_sync.configure(state="disabled")
+            status_lbl.configure(text="מסנכרן... המערכת מקשיבה לאודיו ומתאימה את הכתוביות (זה ייקח כמה דקות)")
+            progress.configure(mode="indeterminate")
+            progress.pack(pady=10)
+            progress.start()
+            
+            output_path = srt_path.rsplit('.', 1)[0] + "_synced.srt"
+            
+            # Locate ffsubsync executable
+            ffs_exe = os.path.join(sys.prefix, "Scripts", "ffsubsync.exe")
+            if not os.path.exists(ffs_exe):
+                ffs_exe = "ffsubsync" # Fallback to PATH
+            
+            process = subprocess.run([ffs_exe, video_path, "-i", srt_path, "-o", output_path], 
+                                     capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                                     
+            if process.returncode == 0:
+                status_lbl.configure(text=f"הסנכרון הסתיים בהצלחה!\nנשמר קובץ חדש:\n{os.path.basename(output_path)}")
+            else:
+                status_lbl.configure(text=f"שגיאה בסנכרון, אולי חסר FFMPEG? פלט:\n{process.stderr[-200:]}")
+        except Exception as e:
+            status_lbl.configure(text=f"שגיאה כללית: {str(e)}")
+        finally:
+            progress.stop()
+            progress.configure(mode="determinate")
+            progress.pack_forget()
+            btn_select.configure(state="normal")
+            btn_sync.configure(state="normal")
+            
+    threading.Thread(target=run_sync, daemon=True).start()
+
 def select_files():
     file_paths = filedialog.askopenfilenames(
         title="Select English SRT files",
@@ -132,8 +180,11 @@ title_lbl.pack(pady=(30, 5))
 desc_lbl = ctk.CTkLabel(app, text="תרגום כתוביות מואץ חומרה (CUDA)\nניתן לבחור מספר קבצים במקביל", font=ctk.CTkFont(size=14), text_color="gray")
 desc_lbl.pack(pady=(0, 20))
 
-btn_select = ctk.CTkButton(app, text="בחר קבצי SRT לתרגום", font=ctk.CTkFont(size=16), height=50, command=select_files)
-btn_select.pack(pady=10)
+btn_select = ctk.CTkButton(app, text="תרגום כתוביות (מאנגלית לעברית)", font=ctk.CTkFont(size=16), height=40, command=select_files)
+btn_select.pack(pady=5)
+
+btn_sync = ctk.CTkButton(app, text="סנכרון כתוביות אוטומטי (לוידאו)", font=ctk.CTkFont(size=16), height=40, fg_color="#2B7A0B", hover_color="#3E9F15", command=sync_subtitle_ui)
+btn_sync.pack(pady=5)
 
 progress = ctk.CTkProgressBar(app, width=300)
 progress.set(0)

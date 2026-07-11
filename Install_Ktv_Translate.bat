@@ -21,7 +21,7 @@ if not exist "venv" (
 echo [2/3] Installing Dependencies...
 call venv\Scripts\activate
 pip install --upgrade pip
-pip install torch transformers pysrt customtkinter sentencepiece sacremoses ctranslate2 nvidia-cublas-cu12 nvidia-cudnn-cu12
+pip install torch transformers pysrt customtkinter sentencepiece sacremoses ctranslate2 nvidia-cublas-cu12 nvidia-cudnn-cu12 ffsubsync
 
 echo.
 echo [3/3] Installation Complete!
