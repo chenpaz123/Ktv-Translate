@@ -69,18 +69,25 @@ def translate_files(file_paths, status_label, progress_bar, buttons):
         if translator is None:
             for btn in buttons: btn.configure(state="normal")
             return
-        
-        for file_idx, file_path in enumerate(file_paths):
-            file_name = os.path.basename(file_path)
-            status_label.configure(text=f"קורא קובץ ({file_idx+1}/{len(file_paths)}): {file_name}")
-            subs = pysrt.open(file_path, encoding='utf-8')
             
-            total_lines = len(subs)
-            if total_lines == 0:
-                continue
-                
-            # Batch processing for speed
-            batch_size = 32
+        for file_idx, file_path in enumerate(file_paths):
+            status_label.configure(text=f"קורא קובץ ({file_idx+1}/{len(file_paths)}): {os.path.basename(file_path)}")
+            _translate_single(file_path, status_label, progress_bar, file_idx, len(file_paths))
+            
+        status_label.configure(text=f"הסתיימו כל התרגומים בהצלחה!\nעובדו {len(file_paths)} קבצים על CUDA.")
+        
+    except Exception as e:
+        status_label.configure(text=f"שגיאה בתרגום: {str(e)}")
+    finally:
+        progress_bar.pack_forget()
+        for btn in buttons: btn.configure(state="normal")
+
+def _translate_single(file_path, status_label, progress_bar, file_idx, total_files):
+    subs = pysrt.open(file_path, encoding='utf-8')
+    total_lines = len(subs)
+    if total_lines == 0: return file_path
+    
+    batch_size = 32
             for i in range(0, total_lines, batch_size):
                 batch_subs = subs[i:i+batch_size]
                 texts = [sub.text.replace('\n', ' ') for sub in batch_subs]
@@ -100,17 +107,82 @@ def translate_files(file_paths, status_label, progress_bar, buttons):
                 status_label.configure(text=f"מתרגם מואץ ע\"י CUDA ({file_idx+1}/{len(file_paths)})... {int(progress * 100)}%")
                 app.update()
 
-            # Save the new file
-            output_path = file_path.rsplit('.', 1)[0] + "_hebrew.srt"
-            subs.save(output_path, encoding='utf-8')
+        output_path = file_path.rsplit('.', 1)[0] + "_hebrew.srt"
+        subs.save(output_path, encoding='utf-8')
+        return output_path
+
+def extract_translate_mux_ui():
+    video_path = filedialog.askopenfilename(
+        title="Select Video File with Embedded Subtitles",
+        filetypes=(("Video Files", "*.mp4 *.mkv *.avi *.mov"), ("All Files", "*.*"))
+    )
+    if not video_path: return
+    
+    def run_pipeline():
+        try:
+            btn_select.configure(state="disabled")
+            btn_sync_trans.configure(state="disabled")
+            btn_extract_mux.configure(state="disabled")
             
-        status_label.configure(text=f"הסתיימו כל התרגומים בהצלחה!\nעובדו {len(file_paths)} קבצים על CUDA.")
-        
-    except Exception as e:
-        status_label.configure(text=f"שגיאה בתרגום: {str(e)}")
-    finally:
-        progress_bar.pack_forget()
-        for btn in buttons: btn.configure(state="normal")
+            status_lbl.configure(text="שלב 1/3: מחלץ כתוביות מובנות מהוידאו...")
+            progress.configure(mode="indeterminate")
+            progress.pack(pady=10)
+            progress.start()
+            
+            temp_srt = video_path.rsplit('.', 1)[0] + "_extracted.srt"
+            
+            process = subprocess.run(["ffmpeg", "-y", "-i", video_path, "-map", "0:s:0", temp_srt], 
+                                     capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            
+            if process.returncode != 0 or not os.path.exists(temp_srt) or os.path.getsize(temp_srt) == 0:
+                progress.stop()
+                progress.pack_forget()
+                status_lbl.configure(text="לא נמצאו כתוביות מובנות בוידאו (או שגיאת חילוץ).")
+                btn_select.configure(state="normal")
+                btn_sync_trans.configure(state="normal")
+                btn_extract_mux.configure(state="normal")
+                return
+                
+            progress.stop()
+            progress.configure(mode="determinate")
+            
+            # Translate
+            if translator is None or tokenizer is None:
+                load_model(status_lbl, progress)
+                
+            hebrew_srt = _translate_single(temp_srt, status_lbl, progress, 0, 1)
+            
+            # Mux back to video
+            status_lbl.configure(text="שלב 3/3: אורז מחדש את הוידאו עם הכתוביות בעברית (ללא קידוד מחדש)...")
+            progress.configure(mode="indeterminate")
+            progress.start()
+            
+            output_video = video_path.rsplit('.', 1)[0] + "_hebrew.mkv"
+            mux_process = subprocess.run(["ffmpeg", "-y", "-i", video_path, "-i", hebrew_srt, 
+                                          "-c", "copy", "-c:s", "srt", output_video], 
+                                         capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                                         
+            progress.stop()
+            
+            if mux_process.returncode == 0:
+                status_lbl.configure(text=f"הושלם בהצלחה!\nנשמר סרטון חדש מוכן לצפייה:\n{os.path.basename(output_video)}")
+                try:
+                    os.remove(temp_srt)
+                    os.remove(hebrew_srt)
+                except: pass
+            else:
+                status_lbl.configure(text=f"שגיאה באריזת הוידאו:\n{mux_process.stderr[-200:]}")
+                
+        except Exception as e:
+            progress.stop()
+            status_lbl.configure(text=f"שגיאה כללית: {str(e)}")
+        finally:
+            progress.pack_forget()
+            btn_select.configure(state="normal")
+            btn_sync_trans.configure(state="normal")
+            btn_extract_mux.configure(state="normal")
+            
+    threading.Thread(target=run_pipeline, daemon=True).start()
 
 def sync_and_translate_ui():
     video_path = filedialog.askopenfilename(
@@ -150,18 +222,20 @@ def sync_and_translate_ui():
             if process.returncode == 0:
                 status_lbl.configure(text="הסנכרון הסתיים! מתחיל תרגום לעברית...")
                 # Start phase 2: translation on the synced file
-                translate_files([synced_path], status_lbl, progress, [btn_select, btn_sync_trans])
+                translate_files([synced_path], status_lbl, progress, [btn_select, btn_sync_trans, btn_extract_mux])
             else:
                 progress.pack_forget()
                 status_lbl.configure(text=f"שגיאה בסנכרון. פלט:\n{process.stderr[-200:]}")
                 btn_select.configure(state="normal")
                 btn_sync_trans.configure(state="normal")
+                btn_extract_mux.configure(state="normal")
         except Exception as e:
             progress.stop()
             progress.pack_forget()
             status_lbl.configure(text=f"שגיאה כללית: {str(e)}")
             btn_select.configure(state="normal")
             btn_sync_trans.configure(state="normal")
+            btn_extract_mux.configure(state="normal")
             
     threading.Thread(target=run_sync, daemon=True).start()
 
@@ -172,12 +246,12 @@ def select_files():
     )
     
     if file_paths:
-        threading.Thread(target=translate_files, args=(file_paths, status_lbl, progress, [btn_select, btn_sync_trans]), daemon=True).start()
+        threading.Thread(target=translate_files, args=(file_paths, status_lbl, progress, [btn_select, btn_sync_trans, btn_extract_mux]), daemon=True).start()
 
 # --- GUI Setup ---
 app = ctk.CTk()
 app.title("Ktv Translate - SRT to Hebrew")
-app.geometry("500x350")
+app.geometry("500x400")
 app.eval('tk::PlaceWindow . center')
 
 title_lbl = ctk.CTkLabel(app, text="Ktv Translate", font=ctk.CTkFont(size=24, weight="bold"))
@@ -189,8 +263,11 @@ desc_lbl.pack(pady=(0, 20))
 btn_select = ctk.CTkButton(app, text="תרגום כתוביות בלבד (ללא סנכרון)", font=ctk.CTkFont(size=16), height=40, command=select_files)
 btn_select.pack(pady=5)
 
-btn_sync_trans = ctk.CTkButton(app, text="סנכרון + תרגום אוטומטי (מומלץ)", font=ctk.CTkFont(size=16), height=40, fg_color="#2B7A0B", hover_color="#3E9F15", command=sync_and_translate_ui)
+btn_sync_trans = ctk.CTkButton(app, text="סנכרון + תרגום אוטומטי (לכתוביות שהורדו)", font=ctk.CTkFont(size=16), height=40, command=sync_and_translate_ui)
 btn_sync_trans.pack(pady=5)
+
+btn_extract_mux = ctk.CTkButton(app, text="חילוץ ותרגום כתוביות מובנות מתוך וידאו", font=ctk.CTkFont(size=16), height=40, fg_color="#2B7A0B", hover_color="#3E9F15", command=extract_translate_mux_ui)
+btn_extract_mux.pack(pady=5)
 
 progress = ctk.CTkProgressBar(app, width=300)
 progress.set(0)
