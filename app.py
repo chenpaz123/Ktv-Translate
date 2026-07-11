@@ -159,7 +159,9 @@ def extract_translate_mux_ui():
             
             output_video = video_path.rsplit('.', 1)[0] + "_hebrew.mkv"
             mux_process = subprocess.run(["ffmpeg", "-y", "-i", video_path, "-i", hebrew_srt, 
-                                          "-c", "copy", "-c:s", "srt", output_video], 
+                                          "-map", "0", "-map", "1", "-c", "copy", 
+                                          "-metadata:s:s:last", "language=heb", "-disposition:s:last", "default",
+                                          output_video], 
                                          capture_output=True, text=True, encoding='utf-8', errors='ignore')
                                          
             progress.stop()
