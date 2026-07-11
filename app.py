@@ -54,10 +54,10 @@ def load_model(status_label, progress_bar):
         status_label.configure(text=f"שגיאה בטעינת המודל: {str(e)}")
         progress_bar.pack_forget()
 
-def translate_files(file_paths, status_label, progress_bar, translate_btn):
+def translate_files(file_paths, status_label, progress_bar, buttons):
     global translator, tokenizer
     try:
-        translate_btn.configure(state="disabled")
+        for btn in buttons: btn.configure(state="disabled")
         status_label.configure(text="טוען מודל...")
         progress_bar.set(0)
         progress_bar.pack(pady=10)
@@ -67,7 +67,7 @@ def translate_files(file_paths, status_label, progress_bar, translate_btn):
             load_model(status_label, progress_bar)
             
         if translator is None:
-            translate_btn.configure(state="normal")
+            for btn in buttons: btn.configure(state="normal")
             return
         
         for file_idx, file_path in enumerate(file_paths):
@@ -110,9 +110,9 @@ def translate_files(file_paths, status_label, progress_bar, translate_btn):
         status_label.configure(text=f"שגיאה בתרגום: {str(e)}")
     finally:
         progress_bar.pack_forget()
-        translate_btn.configure(state="normal")
+        for btn in buttons: btn.configure(state="normal")
 
-def sync_subtitle_ui():
+def sync_and_translate_ui():
     video_path = filedialog.askopenfilename(
         title="Select Video File (MP4, MKV, etc)",
         filetypes=(("Video Files", "*.mp4 *.mkv *.avi *.mov"), ("All Files", "*.*"))
@@ -128,34 +128,40 @@ def sync_subtitle_ui():
     def run_sync():
         try:
             btn_select.configure(state="disabled")
-            btn_sync.configure(state="disabled")
-            status_lbl.configure(text="מסנכרן... המערכת מקשיבה לאודיו ומתאימה את הכתוביות (זה ייקח כמה דקות)")
+            btn_sync_trans.configure(state="disabled")
+            status_lbl.configure(text="שלב 1/2: מסנכרן (מתאים את הכתוביות לדיבור)... זה עשוי לקחת כמה דקות")
             progress.configure(mode="indeterminate")
             progress.pack(pady=10)
             progress.start()
             
-            output_path = srt_path.rsplit('.', 1)[0] + "_synced.srt"
+            synced_path = srt_path.rsplit('.', 1)[0] + "_synced.srt"
             
             # Locate ffsubsync executable
             ffs_exe = os.path.join(sys.prefix, "Scripts", "ffsubsync.exe")
             if not os.path.exists(ffs_exe):
                 ffs_exe = "ffsubsync" # Fallback to PATH
             
-            process = subprocess.run([ffs_exe, video_path, "-i", srt_path, "-o", output_path], 
+            process = subprocess.run([ffs_exe, video_path, "-i", srt_path, "-o", synced_path], 
                                      capture_output=True, text=True, encoding='utf-8', errors='ignore')
-                                     
-            if process.returncode == 0:
-                status_lbl.configure(text=f"הסנכרון הסתיים בהצלחה!\nנשמר קובץ חדש:\n{os.path.basename(output_path)}")
-            else:
-                status_lbl.configure(text=f"שגיאה בסנכרון, אולי חסר FFMPEG? פלט:\n{process.stderr[-200:]}")
-        except Exception as e:
-            status_lbl.configure(text=f"שגיאה כללית: {str(e)}")
-        finally:
+            
             progress.stop()
             progress.configure(mode="determinate")
+            
+            if process.returncode == 0:
+                status_lbl.configure(text="הסנכרון הסתיים! מתחיל תרגום לעברית...")
+                # Start phase 2: translation on the synced file
+                translate_files([synced_path], status_lbl, progress, [btn_select, btn_sync_trans])
+            else:
+                progress.pack_forget()
+                status_lbl.configure(text=f"שגיאה בסנכרון. פלט:\n{process.stderr[-200:]}")
+                btn_select.configure(state="normal")
+                btn_sync_trans.configure(state="normal")
+        except Exception as e:
+            progress.stop()
             progress.pack_forget()
+            status_lbl.configure(text=f"שגיאה כללית: {str(e)}")
             btn_select.configure(state="normal")
-            btn_sync.configure(state="normal")
+            btn_sync_trans.configure(state="normal")
             
     threading.Thread(target=run_sync, daemon=True).start()
 
@@ -166,7 +172,7 @@ def select_files():
     )
     
     if file_paths:
-        threading.Thread(target=translate_files, args=(file_paths, status_lbl, progress, btn_select), daemon=True).start()
+        threading.Thread(target=translate_files, args=(file_paths, status_lbl, progress, [btn_select, btn_sync_trans]), daemon=True).start()
 
 # --- GUI Setup ---
 app = ctk.CTk()
@@ -180,11 +186,11 @@ title_lbl.pack(pady=(30, 5))
 desc_lbl = ctk.CTkLabel(app, text="תרגום כתוביות מואץ חומרה (CUDA)\nניתן לבחור מספר קבצים במקביל", font=ctk.CTkFont(size=14), text_color="gray")
 desc_lbl.pack(pady=(0, 20))
 
-btn_select = ctk.CTkButton(app, text="תרגום כתוביות (מאנגלית לעברית)", font=ctk.CTkFont(size=16), height=40, command=select_files)
+btn_select = ctk.CTkButton(app, text="תרגום כתוביות בלבד (ללא סנכרון)", font=ctk.CTkFont(size=16), height=40, command=select_files)
 btn_select.pack(pady=5)
 
-btn_sync = ctk.CTkButton(app, text="סנכרון כתוביות אוטומטי (לוידאו)", font=ctk.CTkFont(size=16), height=40, fg_color="#2B7A0B", hover_color="#3E9F15", command=sync_subtitle_ui)
-btn_sync.pack(pady=5)
+btn_sync_trans = ctk.CTkButton(app, text="סנכרון + תרגום אוטומטי (מומלץ)", font=ctk.CTkFont(size=16), height=40, fg_color="#2B7A0B", hover_color="#3E9F15", command=sync_and_translate_ui)
+btn_sync_trans.pack(pady=5)
 
 progress = ctk.CTkProgressBar(app, width=300)
 progress.set(0)
