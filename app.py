@@ -88,28 +88,28 @@ def _translate_single(file_path, status_label, progress_bar, file_idx, total_fil
     if total_lines == 0: return file_path
     
     batch_size = 32
-            for i in range(0, total_lines, batch_size):
-                batch_subs = subs[i:i+batch_size]
-                texts = [sub.text.replace('\n', ' ') for sub in batch_subs]
-                
-                # Translate batch using ctranslate2
-                source_tokens = [tokenizer.convert_ids_to_tokens(tokenizer.encode(text)) for text in texts]
-                results = translator.translate_batch(source_tokens, target_prefix=[["heb_Hebr"]] * len(source_tokens))
-                translated_texts = [tokenizer.decode(tokenizer.convert_tokens_to_ids(result.hypotheses[0][1:]), skip_special_tokens=True) for result in results]
-                
-                # Put translated text back
-                for j, sub in enumerate(batch_subs):
-                    sub.text = translated_texts[j]
-                
-                # Update progress
-                progress = (i + len(batch_subs)) / total_lines
-                progress_bar.set(progress)
-                status_label.configure(text=f"מתרגם מואץ ע\"י CUDA ({file_idx+1}/{len(file_paths)})... {int(progress * 100)}%")
-                app.update()
+    for i in range(0, total_lines, batch_size):
+        batch_subs = subs[i:i+batch_size]
+        texts = [sub.text.replace('\n', ' ') for sub in batch_subs]
+        
+        # Translate batch using ctranslate2
+        source_tokens = [tokenizer.convert_ids_to_tokens(tokenizer.encode(text)) for text in texts]
+        results = translator.translate_batch(source_tokens, target_prefix=[["heb_Hebr"]] * len(source_tokens))
+        translated_texts = [tokenizer.decode(tokenizer.convert_tokens_to_ids(result.hypotheses[0][1:]), skip_special_tokens=True) for result in results]
+        
+        # Put translated text back
+        for j, sub in enumerate(batch_subs):
+            sub.text = translated_texts[j]
+        
+        # Update progress
+        progress_val = (i + len(batch_subs)) / total_lines
+        progress_bar.set(progress_val)
+        status_label.configure(text=f"מתרגם מואץ ע\"י CUDA ({file_idx+1}/{total_files})... {int(progress_val * 100)}%")
+        app.update()
 
-        output_path = file_path.rsplit('.', 1)[0] + "_hebrew.srt"
-        subs.save(output_path, encoding='utf-8')
-        return output_path
+    output_path = file_path.rsplit('.', 1)[0] + "_hebrew.srt"
+    subs.save(output_path, encoding='utf-8')
+    return output_path
 
 def extract_translate_mux_ui():
     video_path = filedialog.askopenfilename(
