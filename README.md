@@ -39,3 +39,8 @@ Use this if your subtitles are already perfectly synchronized.
 - Python 3.8 or higher.
 - (Optional but Highly Recommended) An NVIDIA GPU for CUDA acceleration. If no compatible GPU is found, the application will fallback to CPU translation seamlessly.
 - **FFmpeg**: Required for the Auto-Sync feature to extract audio from videos. It usually comes pre-installed, but if auto-sync fails, ensure FFmpeg is installed and added to your system PATH.
+
+---
+
+## 🤖 AI-Assisted Development
+This project is part of an AI development portfolio, showcasing the power of human-AI collaboration in software engineering. The entire codebase, architecture, bug fixing, and optimization were pair-programmed alongside an advanced Agentic AI coding assistant.
