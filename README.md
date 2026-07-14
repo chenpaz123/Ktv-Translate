@@ -35,6 +35,12 @@ Use this if your subtitles are already perfectly synchronized.
 2. Select one or more English `.srt` files.
 3. The translated files will be automatically saved as `[filename]_hebrew.srt`.
 
+### 3. Extract, Translate & Mux (Embedded Subtitles)
+Use this if your video files already contain embedded English subtitles (like MKV files).
+1. Click **חילוץ ותרגום כתוביות מובנות מתוך וידאו**.
+2. Select one or more video files (Batch processing supported - e.g. an entire season).
+3. The app will automatically extract the embedded subtitles, translate them to Hebrew, and generate a new duplicate video file with the Hebrew subtitles natively embedded as the default track.
+
 ## Requirements
 - Python 3.8 or higher.
 - (Optional but Highly Recommended) An NVIDIA GPU for CUDA acceleration. If no compatible GPU is found, the application will fallback to CPU translation seamlessly.
